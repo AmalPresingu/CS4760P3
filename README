@@ -1,0 +1,38 @@
+Author  : Amal Presingu
+Date    : 10/14/2022
+CS4760  : Project 3
+
+HOW TO RUN
+----------
+1. Run the make command to create master and slave executables.
+2. Type ./master -t ss n   OR    ./master n
+3. Type slave xx (between 1 and 20) to run child process.
+4. If no time is specified, it will default to 100 seconds. 
+5. If n is greater than 20, the program will set n to 20 and still run. 
+6. After forceful exit or time running out, type -ls to see results. 
+7. After running once, run clean command for best results.
+
+
+COMMANDS & PAIRINGS
+-------------------
+./master n -> slave xx                (Time will default to 100 seconds and allow you to enter xx between 1 and 20.           
+./master -t ss n -> slave xx          (Allows you to set time in seconds and enter xx between 1 and 20.
+
+
+Version Control
+---------------
+The .git subdirectory can be found by running ls -la in the directory.
+GitHub Repo: https://github.com/AmalPresingu/CS4760P3
+
+ISSUES/CHANGES
+--------------
+After running ./master n or ./master -t ss n, the user is supposed to enter slave xx. I'm not fully sure if
+we were supposed include this process in the master file itself, but I interpreted it as allowing the user
+to run the logical process number through input. If nothing is entered after the inital ./master usage, then it will
+exit and print that to logfile.master. The user can then go into logfile.xx. It should work the same anyways.
+
+Also was not fully sure about the logfile.master format, so I ended up using the same format when I was testing out the time library.
+
+* Since semaphores are interrupt-based, the wait time is a bit longer with less CPU usage. On top of that, our wait time is random.
+A command such as ./master -t 10 10 may not give consistent results because the time window is so small. Longer arguments for ss
+will produce more accurate results in this case. 

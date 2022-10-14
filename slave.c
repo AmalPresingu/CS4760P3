@@ -1,8 +1,7 @@
 //Author  :  Amal Presingu
-//Date    :  10/3/2022
+//Date    :  10/14/2022
 #include "config.h"
 
-//implemented turn-based algorithm from notes
 enum state { idle, want_in, in_cs };
 
 int turnId, flagId;
@@ -55,91 +54,58 @@ void signalHandle()
     	exit(0);
 }
 	
-//main code for slave (working with multiple process algorithm)
+//main code for slave (working with semaphores)
 int main(int argc , char ** argv){
     	signal(SIGTERM,signalHandle);
 
     	int childIds = atoi(argv[1]);
     	int n = atoi(argv[2]);
 
-    	for (int itr = 0; itr<5; itr++){
+	struct sembuf semLock, semRelease;
 
-        	turnId  = shmget(SHMTURN, sizeof(int), 0666 | IPC_CREAT);
-        	flagId = shmget(SHMFLAG,sizeof(enum state) *n, 0666 | IPC_CREAT);
+	//taken from man page
+	//number, operation, and flags for LOCK & RELEASE
+	semLock.sem_num = 0;
+	semLock.sem_op = -1;
+	semLock.sem_flg = 0;
 
-        	turn = (int *) shmat(turnId, 0, 0);
-        	flag = (enum state *) shmat(flagId ,0 ,0);
+	semRelease.sem_num = 0;
+	semRelease.sem_op = 1;
+	semRelease.sem_flg = 0;
 
-        	int j; // Local to each process
-        	int i = childIds - 1;
-        	do
-        	{
-            		flag[i] = want_in; // Raise my flag
-            		j = *turn; // Set local variable
-            		while ( j != i )
-                		j = (flag[j] != idle) ? *turn : (j + 1) % n;
-                	// Declare intention to enter critical section
-                	flag[i] = in_cs;
-                	// Check that no one else is in critical section
-                	for (j = 0; j < n; j++)
-                    		if ( ( j != i ) && ( flag[j] == in_cs ) )
-                        break;
-        	} 
-        	while( ( j < n ) || ( *turn != i && flag[*turn] != idle ));
+	key_t key = ftok(SEM_NAME, 'P');
+	if (key == -1) 
+	{
+		perror("File not found");
+		exit(1);
+	}
 
-        	// Assign turn to self and enter critical section
-        
-        	*turn = i;
-        	srand(time(0));
+	int semId = semget(key, 1, 0);
+	if (semId == -1)
+	{
+		perror("semget");
+		exit(1);
+	}
 
-		//sleeping between 1 and 3 seconds
-        	int randomSleepTimeBefore  = rand()%3 +1;
-        	int randomSleepTimeAfter  = rand()%3 +1;
+	srand(time(0));
+	for (int itr = 0; itr < 5; itr++)
+	{
+                int randomSleepTimeBefore  = rand()%3 +1;
+                int randomSleepTimeAfter  = rand()%3 +1;
+		
+		semop(semId, &semLock, 1);
 
-        	logEntry(childIds, ENTER);    
-
-        	sleep(randomSleepTimeBefore);                   
-        	fileWrite(childIds);
-        	sleep(randomSleepTimeAfter);
-
-        	logEntry(childIds, EXIT);    
-        	// Exit section
-
-        	j = (*turn + 1) % n;
-        	while (flag[j] == idle)
-        	j = (j + 1) % n;
-        	// Assign turn to next waiting process; change own flag to idle
-        	*turn = j;
-        	flag[i] = idle;
-
-    	}
+		//critical section
+		logEntry(childIds, ENTER);
+		sleep(randomSleepTimeBefore);
+		fileWrite(childIds);
+		sleep(randomSleepTimeAfter);
+		logEntry(childIds, EXIT);
+		//exit section 
+		semop(semId, &semRelease, 1);
+	}
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

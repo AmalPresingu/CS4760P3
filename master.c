@@ -1,5 +1,5 @@
 //Author :  Amal Presingu
-//Date   :  10/3/2022
+//Date   :  10/14/2022
 
 #include "config.h"
 
@@ -8,6 +8,7 @@ int shmidChild;
 char *shmStrChild;
 int childIds = 1;
 int slaveId;
+int semId;
 
 //master globals
 int shmidParent;
@@ -103,6 +104,8 @@ void exitMaster()
 	shmdt(shmStrParent);
 	shmctl(shmidParent, IPC_RMID, NULL);
 
+	semctl(semId, 0, IPC_RMID);
+
 	int status;
 	for (int i = 0; i < n; i++)
 	{
@@ -134,6 +137,7 @@ void signalHandleTerminate()
 	logMaster("Handled the SIGTERM signal. Exiting... \n");
     	shmdt(shmStrParent);
     	shmctl(shmidParent,IPC_RMID,NULL);
+	semctl(semId, 0, IPC_RMID);
    	exit(0);
 }
 
@@ -185,7 +189,7 @@ int main(int argc, char **argv)
 	//shared memory from above
 	shmidParent = shmget(SHMKEY, SHMSIZE, 0666 | IPC_CREAT);
 	shmStrParent = shmat(shmidParent, (void*)0, 0);
-	//referercing the hotfix from above
+	//referencing the hotfix from above
 	for (int i = 0; i < MAXCHILD; i++)
 	{
 		shmStrParent[i] = at[i] = '@';
@@ -211,6 +215,29 @@ int main(int argc, char **argv)
 
 	char input[100];
 	char logStr[200];
+
+	//initializing sempahores
+	key_t key = ftok(SEM_NAME, 'P');
+	if (key == -1)
+	{
+		perror("File was not found.");
+		exit(1);
+	}
+
+	semId = semget(key, 1, 0666 | IPC_CREAT);
+	if (semId == -1) 
+	{
+		perror("semget");
+		exit(1);
+	}
+
+	int status = semctl(semId, 0, SETVAL, 1);
+	if (status == - 1)
+	{
+		perror ("semctl");
+		exit(1);
+	}
+
 	while (1)//not sure if this is the intended procedure, but it seems to work
 	{
 		if (strncmp(shmStrParent, at, n) == 0)
